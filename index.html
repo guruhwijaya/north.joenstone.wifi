@@ -7,8 +7,8 @@
 <meta property="og:site_name" content="Iuran WiFi NJ">
 <meta property="og:title" content="Iuran WiFi North Joenstone">
 <meta property="og:description" content="Cek status pembayaran dan nomor rekening iuran WiFi bulan ini.">
-<meta property="og:image" content="https://guruhwijaya.github.io/north.joenstone.wifi/og-2.jpg?v=1795775262">
-<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image" content="https://guruhwijaya.github.io/north.joenstone.wifi/thumbnail.png?v=1">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -100,7 +100,7 @@ function ipUrl(c){var v=(c.ip||'').trim();if(!v)return '';if(/^\d{1,3}(:\d+)?$/.
 function nm(c,ar){var u=EDIT?ipUrl(c):'',t=u?'a':'div',at=u?' href="'+esc(u)+'" target="_blank" rel="noopener"':' data-a="'+(EDIT?'ed':'hist')+'" data-i="'+c.id+'"';return '<'+t+' class="nm"'+at+'>'+esc(c.name)+(u?'<small class="ip">🌐 '+esc(u.replace(/^https?:\/\//,''))+(c.rnd?' · acak':'')+'</small>':'')+(ar.length&&!(!EDIT&&S.hide)?'<small>Tunggakan '+ar.length+' bln · '+rp(ar.length*c.fee)+'</small>':'')+'</'+t+'>'}
 function load(){load0();mig()}
 function load0(){try{S=JSON.parse($('data').textContent)}catch(e){S=null}if(!S||!S.cust)S=seed();if(EDIT){try{var L=JSON.parse(localStorage.getItem(KEY));if(L&&L.cust&&L.pay)S=L}catch(e){}}}
-function build(){var c=document.documentElement.cloneNode(true);['mt','sm','tabs','main','sh','bn','md'].forEach(function(i){c.querySelector('#'+i).innerHTML=''});c.querySelector('#pb').removeAttribute('style');c.querySelector('#ov').removeAttribute('style');c.querySelector('#data').textContent=JSON.stringify(S).replace(/</g,'\\u003c');c.querySelector('#cfg').textContent=JSON.stringify({db:CFG.db});return '<!DOCTYPE html>\n'+c.outerHTML}
+function build(){var c=document.documentElement.cloneNode(true);['mt','sm','tabs','main','sh','bn','md'].forEach(function(i){c.querySelector('#'+i).innerHTML=''});c.querySelector('#pb').removeAttribute('style');c.querySelector('#ov').removeAttribute('style');c.querySelector('#data').textContent=JSON.stringify(S).replace(/</g,'\\u003c');c.querySelector('#cfg').textContent=JSON.stringify(CFG);return '<!DOCTYPE html>\n'+c.outerHTML}
 function dirty(){try{return localStorage.getItem('wifi_nj_dirty')==='1'}catch(e){return false}}
 function save(){if(!EDIT)return;S.upd=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem('wifi_nj_dirty','1')}catch(e){alert('Gagal menyimpan di HP ini')}push()}
 function exp(){var b=new Blob([build()],{type:'text/html'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='index.html';document.body.appendChild(a);a.click();a.remove();try{localStorage.removeItem('wifi_nj_dirty')}catch(e){}render()}

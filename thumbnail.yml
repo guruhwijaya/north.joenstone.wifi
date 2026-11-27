@@ -1,0 +1,100 @@
+name: Thumbnail Otomatis
+
+on:
+  push:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: thumbnail
+
+env:
+  # Ganti jika alamat situs Anda berbeda
+  SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+
+jobs:
+  thumbnail:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pasang browser
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y fonts-roboto
+
+      - name: Buat gambar daftar user
+        run: |
+          python - <<'PY'
+          import os, re, hashlib, pathlib
+          from playwright.sync_api import sync_playwright
+
+          # Hanya daftar pelanggan, 2 kolom landscape
+          CSS = """
+          *{font-family:Roboto,sans-serif!important}
+          body>:not(.wrap),.wrap>:not(#main),#main>:not(#rows){display:none!important}
+          html,body{background:#f5f1ea!important}
+          body{max-width:none!important;margin:0!important;padding:0!important}
+          .wrap{margin:0!important;padding:0!important}
+          #rows{display:grid!important;grid-auto-flow:column;gap:5.5px 6px;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            grid-template-rows:repeat(var(--n),minmax(0,1fr));
+            box-sizing:border-box;height:315px;padding:7.5px 9px}
+          .row{margin:0!important;gap:5px!important;min-height:0}
+          .no{width:28px!important;font-size:14px;font-style:normal!important}
+          .nm{padding:0 7px!important;font-size:14.5px;white-space:nowrap;overflow:hidden}
+          .nm small{font-size:8.3px!important}
+          .st{width:133px!important;padding:1px!important;font-size:14.5px!important;white-space:nowrap}
+          .st:has(small){font-size:12px!important}
+          .st small{font-size:10.5px!important}
+          """
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page(
+                  viewport={"width": 600, "height": 315}, device_scale_factor=2,
+                  locale="id-ID", timezone_id="Asia/Jakarta",
+                  color_scheme="light", service_workers="block")
+              # Agar robot ini tidak tercatat di Riwayat pembuka
+              page.add_init_script("localStorage.setItem('wifi_nj_me','1')")
+              page.goto(os.environ["SITE_URL"], wait_until="load", timeout=60000)
+              # Tunggu data terbaru dari Firebase (gagal = gambar lama dipertahankan)
+              page.wait_for_function("window.got === true", timeout=60000)
+              page.add_style_tag(content=CSS)
+              n = page.evaluate("""() => {
+                const n = document.querySelectorAll('#rows .row').length;
+                document.documentElement.style.setProperty('--n', Math.ceil(n / 2));
+                return n;
+              }""")
+              assert n > 0, "Daftar pelanggan tidak ditemukan"
+              print("Jumlah baris:", n)
+              page.evaluate("document.fonts.ready.then(() => 1)")
+              page.wait_for_timeout(500)
+              page.screenshot(path="thumbnail.png", animations="disabled")
+              browser.close()
+
+          # Beri versi baru agar gambar lama tidak dipakai lagi
+          v = hashlib.md5(pathlib.Path("thumbnail.png").read_bytes()).hexdigest()[:8]
+          f = pathlib.Path("index.html")
+          html = f.read_bytes().decode("utf-8")
+          f.write_bytes(re.sub(r"thumbnail\.png(\?v=[0-9a-f]+)?", "thumbnail.png?v=" + v, html).encode("utf-8"))
+          PY
+
+      - name: Simpan dan terbitkan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add thumbnail.png index.html
+          if git diff --cached --quiet; then echo "Tidak ada perubahan"; exit 0; fi
+          git commit -m "Perbarui thumbnail"
+          git pull --rebase
+          git push
+          gh api -X POST "repos/$GITHUB_REPOSITORY/pages/builds" || true
